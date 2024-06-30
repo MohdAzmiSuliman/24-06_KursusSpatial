@@ -49,7 +49,7 @@ mysf_dist <- st_read("gadm41_MYS_shp", layer = "gadm41_MYS_2")
 ```
 
 
-# Analysis
+# Visualization
 
 
 ## MY City Location
@@ -125,7 +125,16 @@ ggplot(data = mycity_sf) +
 ```{r}
 leaflet() %>% 
   addProviderTiles("CartoDB.Positron") %>% 
-  addPolygons(data = mysf_state, color = "green", 
-              weight = 1, fillOpacity = 0.2)
+  addPolygons(data = mysf_state,  
+              color = "green", 
+              weight = 1, 
+              fillOpacity = 0.2, 
+              popup = ~NAME_1) %>% 
+  addCircleMarkers(data = mycity_comb, 
+                   lng = ~lng, lat = ~lat, 
+                   radius = ~sqrt(shape), 
+                   color = ~colour, 
+                   fillOpacity = 0.8, 
+                   popup = ~city)
 ```
 
