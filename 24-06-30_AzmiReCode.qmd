@@ -1,0 +1,131 @@
+---
+title: "Untitled"
+format: 
+  html:
+    theme: flatly
+    code-fold: true
+    code-copy: hover
+    code-overflow: wrap
+    code-tools: true
+    df-print: paged
+    embed-resources: true
+    page-layout: full
+    reference-location: margin
+    title-block-banner: true
+    title-block-style: default
+    fontsize: .9em
+    monofont: 'Fira Code'
+number-sections: true
+toc: true
+fig-dpi: 320
+dpi: 320
+---
+
+# Preamble
+
+## Library
+
+```{r}
+#| label: setup
+
+pacman::p_load(tidyverse, janitor, sf, leaflet)
+
+mycity_loc <- read_csv("cities_in_malaysia.csv")
+mycity_pop <- read_csv("cities_population.csv") 
+
+mycity_comb <- left_join(mycity_loc, mycity_pop) %>% 
+  mutate(shape = case_when(population < 500000 ~ 16, 
+                           population >= 500000 ~ 15),
+         colour = case_when(population > 200000 ~ "red", 
+                            population >= 50000 & population <= 200000 ~ "orange",
+                            population < 50000 ~ "yellow"))
+
+mycity_sf <- st_as_sf(mycity_comb, coords = c("lng", "lat"), crs = 4326)
+
+mysf_nat <- st_read("gadm41_MYS_shp", layer = "gadm41_MYS_0")
+mysf_state <- st_read("gadm41_MYS_shp", layer = "gadm41_MYS_1")
+mysf_dist <- st_read("gadm41_MYS_shp", layer = "gadm41_MYS_2")
+
+```
+
+
+# Analysis
+
+
+## MY City Location
+
+```{r}
+mycity_loc %>% 
+  ggplot(aes(x = lng, y = lat)) +
+  geom_point() + 
+  labs(x = "Longitude", y = "Latitude", title = "City Location in Malaysia") + 
+  theme_bw()
+
+mycity_loc %>% 
+  ggplot(aes(x = lng, y = lat)) +
+  geom_point(colour = "red", 
+             size = 5, # base plot = pch
+             shape = 16) + # base plot cex
+  labs(x = "Longitude", y = "Latitude", title = "City Location in Malaysia") + 
+  theme_bw()
+```
+
+
+
+## MY City Population
+
+```{r}
+mycity_comb %>% 
+  ggplot(aes(x = lng, y = lat, 
+             colour = colour, shape = as.character(shape))) + 
+  geom_point(size = 5) + 
+  scale_color_manual(values = c("red" = "red", 
+                                "orange" = "orange", 
+                                "yellow" = "yellow")) + 
+  scale_shape_manual(values = c("15" = 15, "16" = 16)) +
+  labs(x = "Longitude", y = "Latitude", title = "City Population in Malaysia") + 
+  theme_bw()
+```
+
+
+## Adjust Bounding Box
+
+if use ggplot, there is no need to use bounding box function to adjust the bounding box. 
+
+```{r}
+ggplot(data = mycity_sf) +
+  geom_sf(aes(colour = colour, shape = as.factor(shape)), size = 5) +
+  coord_sf(xlim = c(90, 120), ylim = c(-5, 20)) +
+  scale_color_manual(values = c("red" = "red", 
+                                "orange" = "orange", 
+                                "yellow" = "yellow")) +
+  scale_shape_manual(values = c("16" = 16, "15" = 15)) +
+  labs(x = "Longitude", y = "Latitude", title = "City Population in Malaysia") +
+  theme_bw()
+```
+
+
+## Add MY Shapefile
+
+```{r}
+ggplot(data = mycity_sf) +
+  geom_sf(data = mysf_state, fill = "grey", colour = "black") +
+  geom_sf(aes(colour = colour, shape = as.factor(shape)), size = 5) +
+  scale_color_manual(values = c("red" = "red", 
+                                "orange" = "orange", 
+                                "yellow" = "yellow")) +
+  scale_shape_manual(values = c("16" = 16, "15" = 15)) +
+  labs(x = "Longitude", y = "Latitude", title = "City Population in Malaysia") +
+  theme_bw()
+```
+
+
+## Leaflet Package
+
+```{r}
+leaflet() %>% 
+  addProviderTiles("CartoDB.Positron") %>% 
+  addPolygons(data = mysf_state, color = "green", 
+              weight = 1, fillOpacity = 0.2)
+```
+
