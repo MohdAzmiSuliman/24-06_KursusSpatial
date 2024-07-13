@@ -28,7 +28,7 @@ dpi: 320
 ```{r}
 #| label: setup
 
-pacman::p_load(tidyverse, janitor, sf, leaflet)
+pacman::p_load(tidyverse, janitor, sf, leaflet, leafem, stars, viridis)
 
 mycity_loc <- read_csv("cities_in_malaysia.csv")
 mycity_pop <- read_csv("cities_population.csv") 
@@ -125,6 +125,70 @@ ggplot(data = mycity_sf) +
 ```{r}
 leaflet() %>% 
   addProviderTiles("CartoDB.Positron") %>% 
+  addPolygons(data = mysf_state,  
+              color = "green", 
+              weight = 1, 
+              fillOpacity = 0.2, 
+              popup = ~NAME_1) %>% 
+  addCircleMarkers(data = mycity_comb, 
+                   lng = ~lng, lat = ~lat, 
+                   radius = ~sqrt(shape), 
+                   color = ~colour, 
+                   fillOpacity = 0.8, 
+                   popup = ~city)
+```
+
+
+
+## stars Package
+
+### World
+
+```{r}
+world_elevmap <- read_stars("wc2.1_2.5m_elev.tif") %>% 
+  as.data.frame(., as_points = F, na.rm = T)
+
+ggplot(world_elevmap) +
+  geom_raster(aes(x = x, y = y, fill = wc2.1_2.5m_elev.tif)) +
+  scale_fill_viridis_c() +  # Optional: Enhance color scale
+  labs(title = "Elevation World", fill = "Elevation") +  # Add titles and labels
+  theme_minimal()  # Use a minimal theme
+```
+
+
+### Malaysia
+
+```{r}
+mal_elevmapst <- read_stars("wc2.1_2.5m_elev.tif") %>% 
+  st_crop(., mysf_nat)
+
+mal_elevmapdf <- mal_elevmapst %>% 
+  as.data.frame(., as_points = F, na.rm = T)
+
+mal_elevmapdf %>% 
+  ggplot() + 
+  geom_raster(aes(x = x, y = y, fill = wc2.1_2.5m_elev.tif)) +
+  scale_fill_viridis_c() +  # Optional: Enhance color scale
+  labs(title = "Elevation World", fill = "Elevation") +  # Add titles and labels
+  theme_minimal()  # Use a minimal theme
+```
+
+
+## Leaflet and Stars
+
+```{r}
+elev_values <- as.vector(mal_elevmapst[[1]])  # Extract the raster values
+color_palette <- colorNumeric(palette = viridis(256, option = "C"), 
+                              domain = range(elev_values, na.rm = TRUE))
+
+
+leaflet() %>% 
+  addProviderTiles("CartoDB.Positron") %>% 
+  addStarsImage(mal_elevmapst, 
+                band = "wc2.1_2.5m_elev.tif", 
+                project = F, 
+                opacity = 0.8,
+                colors = color_palette) %>% 
   addPolygons(data = mysf_state,  
               color = "green", 
               weight = 1, 
